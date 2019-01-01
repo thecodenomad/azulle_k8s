@@ -1,0 +1,44 @@
+- hosts: k8sMaster
+  vars_files:
+    - common_vars.yml
+  tasks:
+    - name: Remove gluster volume
+      gluster_volume:
+        state: absent
+        name: swarm-vols
+
+- hosts: k8s
+  vars_files:
+    - common_vars.yml
+  tasks:
+    - name: Unmount the actual Gluster volume
+      mount:
+        name: "/swarm/volumes"
+        src: "localhost:/swarm-vols"
+        fstype: glusterfs
+        opts: "defaults,_netdev"
+        state: absent
+
+    - name: Stop Gluster
+      service: name=glusterfs-server state=stopped
+
+    - name: Remove gluster
+      become: yes
+      apt: pkg=glusterfs-server state=absent update_cache=true
+
+    - name: Remove Gluster Bricks
+      file:
+        path: /gluster/data
+        state: absent
+
+    - name: Remove parted
+      become: yes
+      apt: pkg=parted state=absent update_cache=true
+
+    - name: Unmount SD card for Gluster Volume
+      mount:
+        path: /gluster/data
+        src: '{{ device_path }}'
+        fstype: ext4
+        opts: noatime
+        state: absent

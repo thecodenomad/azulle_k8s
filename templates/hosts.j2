@@ -1,0 +1,25 @@
+127.0.0.1   localhost
+
+#######################
+# Provided by Ansible #
+#######################
+
+127.0.1.1         {{ ansible_hostname }}  {{ ansible_hostname }}.{{ domain }}
+{% if ansible_hostname != node1 %}
+{{ node1_ip }}     {{ node1 }}  {{ node1 }}.{{ domain }}
+{% endif %}
+{% if ansible_hostname != node2 %}
+{{ node2_ip }}     {{ node2 }}  {{ node2 }}.{{ domain }}
+{% endif %}
+{% if ansible_hostname != node3 %}
+{{ node3_ip }}     {{ node3 }}  {{ node3 }}.{{ domain }}
+{% endif %}
+
+#############################
+# End Ansible configuration #
+#############################
+
+# The following lines are desirable for IPv6 capable hosts
+::1     localhost ip6-localhost ip6-loopback
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters

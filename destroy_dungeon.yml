@@ -1,0 +1,47 @@
+# This file is meant to revert any of the setup that happened in dungeon.yml
+
+- hosts: k8s
+  vars_files:
+    - common_vars.yml
+  tasks:
+    - name: Remove Apt key for docker repo
+      become: yes
+      apt_key:
+        url: https://download.docker.com/linux/debian/gpg
+        id: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+        state: absent
+
+    - name: Remove docker repo for Stretch
+      become: yes
+      apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/debian stretch stable
+        state: absent
+
+    - name: Remove Docker
+      become: yes
+      apt: pkg=docker-ce state=absent update_cache=true
+
+    - name: Check '{{ node_user }}' groups
+      command: groups
+      register: users_groups
+
+    # Workaround required for removing a user from a group
+    # See this open issue: https://github.com/ansible/ansible/issues/11024
+    - name: Remove '{{ node_user }}' user from docker group
+      become: yes
+      command: gpasswd -d '{{ node_user }}' docker
+      when: '"docker" in user_groups.stdout'
+      notify: Revert default groups
+
+    - name: Update /etc/hosts
+      action: template src=templates/revert_hosts.j2 dest=/etc/hosts
+
+  # Everything after sudo are the Debian defaults for a user created during install
+  handlers:
+    - name: Revert default groups
+      become: yes
+      user:
+        name: '{{ node_user }}'
+        group: '{{ node_user }}'
+        groups: sudo,cdrom,floppy,audio,dip,video,plugdev,netdev
+        append: yes

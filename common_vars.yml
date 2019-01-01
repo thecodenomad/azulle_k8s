@@ -1,0 +1,41 @@
+# Modify this file for your own purposes
+
+node_user: 'autobot'
+
+########################################
+# Set the hostnames of your nodes here #
+########################################
+
+# Master node
+node1: 'DungeonMaster'
+node1_ip: '192.168.10.60'
+
+# Worker nodes below
+node2: 'demon1'
+node2_ip: '192.168.10.61'
+
+node3: 'demon2'
+node3_ip: '192.168.10.62'
+
+# Set your domain
+domain: 'hoth'
+
+# Used for workaround removing users from groups
+user_groups:
+  stdout: ''
+
+########################################
+# Set if you want to configure gluster #
+########################################
+
+# !! WARNING !! the disk specified below WILL get formatted!!!
+# Please understand what you are doing!!
+
+device_path: '/dev/mmcblk1'
+filesystem: 'ext4'
+
+# This should match the number of nodes you'll  have in the cluster
+replica_num: 3
+
+# Don't touch, this will be overridden
+disk_info: ''

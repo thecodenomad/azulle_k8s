@@ -1,0 +1,121 @@
+- hosts: k8s
+  vars_files:
+    - common_vars.yml
+
+  tasks:
+    # Handle setting up Gluster for distributed filesystem (used for jenkins and gitlab containers)
+    # Comment out the below if you don't want to setup Gluster
+    # Note: do NOT use Gluster for backing Databases
+    - name: Install gluster
+      become: yes
+      apt: pkg=glusterfs-server state=present update_cache=true
+      notify: Start Gluster
+
+    - name: Create Gluster Bricks
+      file:
+        path: /gluster/data
+        state: directory
+
+    - name: Container storage
+      file:
+        path: /gluster/data
+        state: directory
+
+    # Make sure all nodes can talk to each other by Hostname
+    - name: Update /etc/hosts
+      action: template src=templates/hosts.j2 dest=/etc/hosts
+
+    - name: Install parted
+      become: yes
+      apt: pkg=parted state=present update_cache=true
+
+    - parted: device='{{ device_path }}' unit=MiB
+      register: disk_info
+
+    # !! WARNING !! Remove all partitions from disk
+    - parted:
+        device: '{{ device_path }}'
+        number: "{{ item.num }}"
+        state: absent
+      with_items:
+        - "{{ disk_info.partitions }}"
+      notify: Create single partition for '{{ device_path }}'
+
+  handlers:
+    - name: Create single partition for '{{ device_path }}'
+      parted:
+        device: '{{ device_path }}'
+        number: 1
+        state: present
+      notify: Create a '{{ filesystem }}' filesystem on '{{ device_path }}p1'
+
+    - name: Create a '{{ filesystem }}' filesystem on '{{ device_path }}p1'
+      filesystem:
+        fstype: '{{ filesystem }}'
+        dev: "{{ device_path }}p1"
+      notify: Mount SD card for Gluster Volume
+
+    - name: Mount SD card for Gluster Volume
+      mount:
+        path: /gluster/data
+        src: '{{ device_path }}'
+        fstype: ext4
+        opts: noatime
+        state: mounted
+
+    - name: Start Gluster
+      service: name=glusterfs-server state=started
+
+- hosts: k8sMaster
+  vars_files:
+    - common_vars.yml
+  tasks:
+#    - name: Register '{{ node2 }}'
+#      become: yes
+#      command: gluster peer probe '{{ node2 }}'.'{{ domain }}'
+#
+#    - name: Register '{{ node3 }}'
+#      become: yes
+#      command: gluster peer probe '{{ node3 }}'.'{{ domain }}'
+
+    - name: Create gluster volume
+      gluster_volume:
+        start_on_create: yes
+        state: present
+        name: swarm-vols
+        bricks: /gluster/data
+        replicas: '{{ replica_num }}'
+        force: yes
+        cluster:
+          - '{{ node1_ip }}'
+          - '{{ node2_ip }}'
+          - '{{ node3_ip }}'
+        options:
+          auth.allow: 127.0.0.1,
+      notify: Start Gluster Volume
+
+#    - name: Restrict mounting to only localhost
+#      become: yes
+#      command: gluster volume set swarm-vols auth.allow 127.0.0.1
+
+#    - name: Start the gluster volume
+#      become: yes
+#      command: gluster volume start swarm-vols
+
+  handlers:
+    - name: Start Gluster Volume
+      gluster_volume:
+        state: started
+        name: swarm-vols
+
+- hosts: k8s
+  vars_files:
+    - common_vars.yml
+  tasks:
+    - name: Mount the actual Gluster volume
+      mount:
+        name: "/swarm/volumes"
+        src: "localhost:/swarm-vols"
+        fstype: glusterfs
+        opts: "defaults,_netdev"
+        state: mounted

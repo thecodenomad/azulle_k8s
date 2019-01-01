@@ -1,0 +1,37 @@
+- hosts: k8s
+  vars_files:
+    - common_vars.yml
+  tasks:
+    - name: Add Apt key from docker repo
+      become: yes
+      apt_key:
+        url: https://download.docker.com/linux/debian/gpg
+        state: present
+
+    - name: Add docker repo for Stretch
+      become: yes
+      apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/debian stretch stable
+        state: present
+
+    - name: Install Docker
+      become: yes
+      apt: pkg=docker-ce state=present update_cache=true
+      notify:
+        - Start Docker
+
+    - name: Adding autobot user to group docker
+      become: yes
+      user:
+        name: '{{ node_user }}'
+        group: '{{ node_user }}'
+        groups: docker,cdrom,sudo,audio,dip,video,plugdev,netdev
+        append: yes
+
+    # Make sure all nodes can talk to each other by Hostname
+    - name: Update /etc/hosts
+      action: template src=templates/hosts.j2 dest=/etc/hosts
+
+  handlers:
+    - name: Start Docker
+      service: name=docker state=started
