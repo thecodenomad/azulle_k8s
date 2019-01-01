@@ -21,7 +21,7 @@ node3_ip: '192.168.10.62'
 domain: 'hoth'
 
 # Used for workaround removing users from groups
-user_groups:
+users_groups:
   stdout: ''
 
 ########################################
@@ -30,6 +30,8 @@ user_groups:
 
 # !! WARNING !! the disk specified below WILL get formatted!!!
 # Please understand what you are doing!!
+
+setup_gluster: true
 
 device_path: '/dev/mmcblk1'
 filesystem: 'ext4'

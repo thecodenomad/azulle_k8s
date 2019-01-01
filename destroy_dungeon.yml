@@ -30,7 +30,7 @@
     - name: Remove '{{ node_user }}' user from docker group
       become: yes
       command: gpasswd -d '{{ node_user }}' docker
-      when: '"docker" in user_groups.stdout'
+      ignore_errors: True
       notify: Revert default groups
 
     - name: Update /etc/hosts
