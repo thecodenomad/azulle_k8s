@@ -70,14 +70,6 @@
   vars_files:
     - common_vars.yml
   tasks:
-#    - name: Register '{{ node2 }}'
-#      become: yes
-#      command: gluster peer probe '{{ node2 }}'.'{{ domain }}'
-#
-#    - name: Register '{{ node3 }}'
-#      become: yes
-#      command: gluster peer probe '{{ node3 }}'.'{{ domain }}'
-
     - name: Create gluster volume
       gluster_volume:
         start_on_create: yes
@@ -92,21 +84,6 @@
           - '{{ node3_ip }}'
         options:
           auth.allow: 127.0.0.1,
-      notify: Start Gluster Volume
-
-#    - name: Restrict mounting to only localhost
-#      become: yes
-#      command: gluster volume set swarm-vols auth.allow 127.0.0.1
-
-#    - name: Start the gluster volume
-#      become: yes
-#      command: gluster volume start swarm-vols
-
-  handlers:
-    - name: Start Gluster Volume
-      gluster_volume:
-        state: started
-        name: swarm-vols
 
 - hosts: k8s
   vars_files:

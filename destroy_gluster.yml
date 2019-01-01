@@ -11,16 +11,16 @@
   vars_files:
     - common_vars.yml
   tasks:
-    - name: Unmount the actual Gluster volume
+    - name: Stop Gluster
+      service: name=glusterfs-server state=stopped
+
+    - name: Unmount and Remove Gluster volume from fstab
       mount:
         name: "/swarm/volumes"
         src: "localhost:/swarm-vols"
         fstype: glusterfs
-        opts: "defaults,_netdev"
+        opts: "defaults,netdev"
         state: absent
-
-    - name: Stop Gluster
-      service: name=glusterfs-server state=stopped
 
     - name: Remove gluster
       become: yes
