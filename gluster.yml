@@ -1,4 +1,4 @@
-- hosts: k8s
+- hosts: Swarm
   vars_files:
     - common_vars.yml
 
@@ -66,7 +66,8 @@
     - name: Start Gluster
       service: name=glusterfs-server state=started
 
-- hosts: k8sMaster
+# Setup the volume using the master node
+- hosts: SwarmMaster
   vars_files:
     - common_vars.yml
   tasks:
@@ -85,7 +86,8 @@
         options:
           auth.allow: 127.0.0.1,
 
-- hosts: k8s
+# Mount the volume on each of the nodes
+- hosts: Swarm
   vars_files:
     - common_vars.yml
   tasks:

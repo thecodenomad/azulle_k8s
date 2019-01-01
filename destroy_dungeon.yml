@@ -1,6 +1,6 @@
 # This file is meant to revert any of the setup that happened in dungeon.yml
 
-- hosts: k8s
+- hosts: Swarm
   vars_files:
     - common_vars.yml
   tasks:
@@ -35,6 +35,16 @@
 
     - name: Update /etc/hosts
       action: template src=templates/revert_hosts.j2 dest=/etc/hosts
+
+    - name: Check for existing swarm
+      shell: docker node ls
+      register: status_of_swarm
+      ignore_errors: true
+
+    - name: Nodes Leaving the Swarm
+      shell: docker swarm leave -f
+      ignore_errors: true
+      when: status_of_swarm.rc == 0
 
   # Everything after sudo are the Debian defaults for a user created during install
   handlers:

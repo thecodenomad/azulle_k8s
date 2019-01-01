@@ -1,4 +1,4 @@
-- hosts: k8sMaster
+- hosts: SwarmMaster
   vars_files:
     - common_vars.yml
   tasks:
@@ -7,7 +7,7 @@
         state: absent
         name: swarm-vols
 
-- hosts: k8s
+- hosts: Swarm
   vars_files:
     - common_vars.yml
   tasks:

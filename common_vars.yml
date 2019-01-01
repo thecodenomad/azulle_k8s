@@ -24,6 +24,16 @@ domain: 'hoth'
 users_groups:
   stdout: ''
 
+###################
+# Swarm Specifics #
+###################
+
+token_for_worker:
+  stdout: ''
+
+token_for_manager:
+  stdout: ''
+
 ########################################
 # Set if you want to configure gluster #
 ########################################

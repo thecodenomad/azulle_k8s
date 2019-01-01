@@ -1,4 +1,4 @@
-- hosts: k8s
+- hosts: Swarm
   vars_files:
     - common_vars.yml
   tasks:
@@ -35,3 +35,48 @@
   handlers:
     - name: Start Docker
       service: name=docker state=started
+
+# Setup The swarm
+- hosts: SwarmMaster
+  vars_files:
+    - common_vars.yml
+  tasks:
+    - name: Check for existing swarm
+      shell: docker node ls
+      register: status_of_swarm
+      ignore_errors: true
+
+    - name: Create a new swarm with default parameters
+      docker_swarm:
+        state: present
+      when: status_of_swarm.rc != 0
+      notify: Add Manager to Swarm
+
+    # Get the tokens required for the managers and workers
+    - name: Get the Manager join-token
+      shell: docker swarm join-token --quiet manager
+      register: token_for_manager
+
+    - name: Get the worker join-token
+      shell: docker swarm join-token --quiet worker
+      register: token_for_worker
+
+  handlers:
+    - name: Add Manager to Swarm
+      shell: "docker swarm join --token '{{ token_for_manager.stdout }}' {{ item }}:2377"
+      with_items:
+        - node1_ip
+
+# Add workers and managers to swarm
+- hosts: Swarm
+  tasks:
+    - name: Check for existing swarm
+      shell: docker node ls
+      register: status_of_swarm
+      ignore_errors: true
+
+    - name: Add Workers to Swarm
+      shell: "docker swarm join --token '{{ token_for_worker.stdout }}' '{{ item }}':2377"
+      with_items:
+        - node2_ip
+        - node3_ip
