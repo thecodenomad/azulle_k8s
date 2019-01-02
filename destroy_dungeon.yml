@@ -37,14 +37,24 @@
       action: template src=templates/revert_hosts.j2 dest=/etc/hosts
 
     - name: Check for existing swarm
-      shell: docker node ls
+      shell: docker info
       register: status_of_swarm
       ignore_errors: true
 
     - name: Nodes Leaving the Swarm
       shell: docker swarm leave -f
       ignore_errors: true
-      when: status_of_swarm.rc == 0
+      when: "'Swarm: active' in status_of_swarm.stdout"
+
+    - name: Remove pip dependencies
+      become: yes
+      pip:
+        name: '{{ item.name }}'
+        state: absent
+      with_items:
+        - { name: docker }
+        - { name: docker-py }
+        - { name: docker-pycreds }
 
   # Everything after sudo are the Debian defaults for a user created during install
   handlers:

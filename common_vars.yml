@@ -6,8 +6,10 @@ node_user: 'autobot'
 # Set the hostnames of your nodes here #
 ########################################
 
+master_node: 'dungeonmaster'
+
 # Master node
-node1: 'DungeonMaster'
+node1: 'dungeonmaster'
 node1_ip: '192.168.10.60'
 
 # Worker nodes below
@@ -30,9 +32,31 @@ users_groups:
 
 token_for_worker:
   stdout: ''
+  stderr: ''
+  rc: ''
 
 token_for_manager:
   stdout: ''
+
+pip_installed:
+  stdout: ''
+  stderr: ''
+  rc: ''
+
+downloaded_pip:
+  stdout: ''
+  stderr: ''
+  rc: ''
+
+status_of_swarm:
+  stdout: ''
+  stderr: ''
+  rc: ''
+
+downloaded_portainer:
+  stdout: ''
+  stderr: ''
+  rc: ''
 
 ########################################
 # Set if you want to configure gluster #

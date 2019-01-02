@@ -20,6 +20,35 @@
       notify:
         - Start Docker
 
+    - name: Check if Pip is Installed
+      command: pip --version
+      register: pip_installed
+      ignore_errors: yes
+
+    - name: Check if Pip installer exists
+      command: /usr/bin/test -e /tmp/get-pip.py
+      register: downloaded_pip
+      when: pip_installed.rc != 0
+
+    - name: Download Pip Installer
+      get_url: url=https://bootstrap.pypa.io/get-pip.py  dest=/tmp/get-pip.py
+      when: downloaded_pip is failed
+
+    - name: Install Pip
+      command: "python /tmp/get-pip.py"
+      when: pip_installed.rc != 0
+
+    - name: Install Python Modules for Docker
+      pip:
+        name: "{{ item.name }}"
+        state: present
+      with_items:
+      - { name: docker }
+
+    - name: Remove installer script
+      file: state=absent path=/tmp/get-pip.py
+      when: downloaded_pip is changed
+
     - name: Adding autobot user to group docker
       become: yes
       user:
@@ -36,6 +65,7 @@
     - name: Start Docker
       service: name=docker state=started
 
+
 # Setup The swarm
 - hosts: SwarmMaster
   vars_files:
@@ -46,37 +76,71 @@
       register: status_of_swarm
       ignore_errors: true
 
+    # By default this node should be added as a manager since it initialized the swarm
     - name: Create a new swarm with default parameters
       docker_swarm:
         state: present
-      when: status_of_swarm.rc != 0
-      notify: Add Manager to Swarm
+      when: status_of_swarm is changed
 
     # Get the tokens required for the managers and workers
     - name: Get the Manager join-token
       shell: docker swarm join-token --quiet manager
       register: token_for_manager
 
+    - debug:
+        msg: "Manager token: {{ token_for_manager }}"
+      when: token_for_manager is changed
+
     - name: Get the worker join-token
       shell: docker swarm join-token --quiet worker
       register: token_for_worker
 
-  handlers:
-    - name: Add Manager to Swarm
-      shell: "docker swarm join --token '{{ token_for_manager.stdout }}' {{ item }}:2377"
-      with_items:
-        - node1_ip
+    - debug:
+        msg: "Worker token: {{ token_for_worker }}"
+      when: token_for_worker is changed
+
 
 # Add workers and managers to swarm
-- hosts: Swarm
+- hosts: SwarmSlaves
+  vars:
+    master: "{{ hostvars[master_node]['ansible_default_ipv4']['address'] }}"
+    token: "{{ hostvars[master_node]['token_for_worker']['stdout'] }}"
+  vars_files:
+    - common_vars.yml
   tasks:
-    - name: Check for existing swarm
-      shell: docker node ls
-      register: status_of_swarm
-      ignore_errors: true
+    - name: Join Swarm Cluster as a Worker
+      command: docker swarm join --token "{{ token }}" "{{ master }}":2377
+      when: status_of_swarm.rc != 0
 
-    - name: Add Workers to Swarm
-      shell: "docker swarm join --token '{{ token_for_worker.stdout }}' '{{ item }}':2377"
-      with_items:
-        - node2_ip
-        - node3_ip
+# Setup Portainer
+- hosts: SwarmMaster
+  vars:
+    status_of_swarm: "{{ hostvars[master_node]['status_of_swarm'] }}"
+    deploy_portainer:
+      stdout: ''
+      stderr: ''
+      rc: ''
+    portainer_deployed:
+      stdout: ''
+      stderr: ''
+      rc: ''
+  vars_files:
+    - common_vars.yml
+  tasks:
+    - name: Check if Portainer yaml exists
+      command: /usr/bin/test -e /tmp/portainer-agent-stack.yml
+      register: downloaded_portainer
+      when: status_of_swarm.rc != 0
+      ignore_errors: yes
+
+    - name: Download Portainer Installer
+      get_url: url=https://downloads.portainer.io/portainer-agent-stack.yml  dest=/tmp/portainer-agent-stack.yml validate_certs=no
+      when: downloaded_portainer.rc != 0
+
+    - name: Deploy Portainer
+      command: docker stack deploy --compose-file=/tmp/portainer-agent-stack.yml portainer
+      register: portainer_deployed
+
+    - name: Remove portainer yaml
+      file: state=absent path=/tmp/get-pip.py
+      when: portainer_deployed.rc == 0
